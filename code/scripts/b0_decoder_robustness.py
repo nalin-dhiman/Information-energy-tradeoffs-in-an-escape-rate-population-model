@@ -33,7 +33,6 @@ def main():
     
     base_cfg = load_config(args.config)
     
-    # Resolve sub-configs if strings
     if isinstance(base_cfg.get('stimulus'), str):
         p = Path(base_cfg.get('stimulus'))
         if not p.exists(): p = Path(__file__).parent.parent / str(p)
@@ -45,29 +44,20 @@ def main():
                 if not p.exists(): p = Path(__file__).parent.parent / str(p)
                 if p.exists(): base_cfg['estimators'][k] = load_config(str(p))
 
-    # Force Params per user limit
     base_cfg['simulation']['N'] = 2000
     base_cfg.setdefault('decode', {})
     base_cfg['decode']['n_trials'] = 20
     base_cfg['decode']['split'] = 'trial'
     
-    # Setup v1_w (robustness)
-    # Using 'v1_w_a' logic handled by create_run_dir if v1_w exists?
-    # User said: "New robustness run: runs/v1_w/" 
-    # If I just use create_run_dir(major_version=1), it will auto-increment.
-    # I can try to force 'v1_w' if possible or let it flow. The user accepts 'v1_w_a'.
+    
     run_dir = create_run_dir(major_version=1)
     print(f"Starting Phase 10 Robustness: {run_dir}")
     
-    # Metadata
     full_log = {'metadata': get_run_metadata(), 'config': base_cfg, 'args': vars(args)}
     with open(run_dir / "run.json", "w") as f:
         json.dump(full_log, f, indent=2, default=str)
         
-    theta0_vals = np.linspace(-6.0, 2.0, 10) # 10 values as per "Stage 1" grid logic? 
-    # Or "run the same theta0 sweep". Previous sweep was 15 points.
-    # User said: "run the same theta0 sweep for seeds {0,1,2}".
-    # Let's use 10 points to be faster but cover range.
+    theta0_vals = np.linspace(-6.0, 2.0, 10) 
     
     seeds = [0, 1, 2]
     tau = 0.02
@@ -81,8 +71,8 @@ def main():
         print(f"Seed {seed}...")
         for theta0 in theta0_vals:
             S_trials = []
-            Rate_trials = [] # For Mode A
-            Spike_trials = [] # For Mode B
+            Rate_trials = [] 
+            Spike_trials = []
             E_trials = []
             
             for tr in range(n_trials):
@@ -99,15 +89,13 @@ def main():
                     continue
                     
                 S = data['S']
-                spikes = data['spikes'] # (T, N)
+                spikes = data['spikes'] 
                 dt = data['dt']
                 
-                # Mode A: Rate
                 A_rate = convolve_spikes(spikes, tau, dt)
                 
-                # Mode B: Spikes
-                # Need per-dt population count as input to binning in estimator
-                pop_counts = np.sum(spikes, axis=1) # (T,)
+                
+                pop_counts = np.sum(spikes, axis=1) 
                 
                 S_trials.append(S)
                 Rate_trials.append(A_rate)
@@ -116,8 +104,7 @@ def main():
                 
             mean_rate = np.mean(E_trials)
             
-            # ESTIMATOR CALLS
-            # Config preparation
+           
             lcfg = base_cfg['estimators']['lower'].copy()
             lcfg['split'] = 'trial'
             lcfg['n_trials'] = n_trials
@@ -125,29 +112,23 @@ def main():
             if 'bandwidth' in base_cfg['stimulus']:
                 lcfg['bandwidth'] = base_cfg['stimulus']['cutoff_freq']
             
-            # Setup lags
             if 'lag_taps' in base_cfg.get('decode', {}):
                 lcfg['lags'] = int(base_cfg['decode']['lag_taps'])
             if 'ridge_alpha' in base_cfg.get('decode', {}):
                 lcfg.setdefault('parameters', {})['alpha'] = float(base_cfg['decode']['ridge_alpha'])
                 
-            # Mode A: rate_lags
             lcfg_rate = lcfg.copy()
             lcfg_rate['feature_mode'] = 'rate_lags'
             res_rate = estimate_mi_lower_decode(S_trials, Rate_trials, dt, lcfg_rate)
             I_rate = res_rate.get('I_lower_bits_per_s', 0.0)
             
-            # Mode B: spikecount_lags
             lcfg_spike = lcfg.copy()
             lcfg_spike['feature_mode'] = 'spikecount_lags'
-            # "Bin spikes into bins of width bin_dt (e.g. 10ms or dt_eff)"
-            # Let's let estimator infer from bandwidth, or force 10ms?
+           
             lcfg_spike['bin_dt'] = 0.01 
-            # Need to ensure window matches "0-500ms"
-            # 500ms / 10ms = 50 lags.
+
             lcfg_spike['lag_window'] = 0.5 
-            # Override 'lags' if it conflicts with window?
-            # mi_lower_decode checks 'lags' first. Let's remove 'lags' to use window logic for spikes.
+            
             if 'lags' in lcfg_spike: del lcfg_spike['lags']
             
             res_spike = estimate_mi_lower_decode(S_trials, Spike_trials, dt, lcfg_spike)
@@ -163,7 +144,6 @@ def main():
                 'bpj_spike': I_spike / (mean_rate + 1e-9)
             })
             
-    # CHECK G3'
     df = pd.DataFrame(results)
     df.to_csv(run_dir / "tables" / "decoder_robustness.csv", index=False)
     
@@ -176,7 +156,6 @@ def main():
             sub = df[df['seed'] == s]
             if sub.empty: continue
             
-            # Peak Rate Region
             idx_r = sub['I_lower_rate'].idxmax()
             rate_peak_r = sub.loc[idx_r, 'mean_rate']
             
@@ -200,11 +179,9 @@ def main():
         print("\n" + msg)
         f.write("\n" + msg + "\n")
         
-    # Figures
     fig_dir = run_dir / "figures"
     fig_dir.mkdir(exist_ok=True)
     
-    # Rate vs Rate
     plt.figure()
     for s in seeds:
          sub = df[df['seed'] == s].sort_values('mean_rate')
@@ -215,7 +192,6 @@ def main():
     plt.legend()
     plt.savefig(fig_dir / "bpj_lower_rate_vs_rate.pdf")
     
-    # Spike vs Rate
     plt.figure()
     for s in seeds:
          sub = df[df['seed'] == s].sort_values('mean_rate')
