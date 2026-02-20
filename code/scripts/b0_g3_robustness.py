@@ -79,7 +79,6 @@ def main():
     for seed in seeds:
          print(f"  Seed {seed}")
          for theta0 in theta0_vals:
-              # Data Collection
               S_trials = []
               Rate_trials = []
               Spike_trials = []
