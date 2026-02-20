@@ -9,7 +9,6 @@ import pickle
 from pathlib import Path
 from scipy.signal import lfilter
 
-# Add project root to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.io.config import parse_cli_overrides, save_config, load_config
@@ -34,7 +33,6 @@ def convolve_spikes(spikes, tau, dt):
     return A_smooth
 
 def main():
-    # 1. Config & Args
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='configs/base.yaml')
     parser.add_argument('--seeds', type=str, default="0,1,2")
@@ -42,7 +40,6 @@ def main():
     args, unknown = parser.parse_known_args()
     base_cfg = load_config(args.config)
     
-    # Resolve sub-configs
     if isinstance(base_cfg.get('stimulus'), str):
         p = Path(base_cfg.get('stimulus'))
         if not p.exists(): p = Path(__file__).parent.parent / str(p)
@@ -59,11 +56,9 @@ def main():
     base_cfg['decode']['n_trials'] = 20
     base_cfg['decode']['split'] = 'trial'
     
-    # 2. Setup Run
     run_dir = create_run_dir(major_version=1)
     print(f"Starting G3' Robustness Check (Phase 8): {run_dir}")
     
-    # Strict Metadata
     metadata = get_run_metadata()
     full_log = {'metadata': metadata, 'config': base_cfg, 'args': vars(args)}
     run_json_path = run_dir / "run.json"
@@ -103,27 +98,17 @@ def main():
                    
                    S_trials.append(S)
                    
-                   # Rate Feature (Convolved)
                    rate_feature = convolve_spikes(spikes, tau, dt)
                    Rate_trials.append(rate_feature)
                    
-                   # Spike Feature (Raw Spikes Sum)
-                   # For 'spikecount', estimator expects array to bin.
-                   # Should we pass total trial spikes (sum over N)?
-                   # Yes, population model assumes lumped output usually?
-                   # model.run_batch integrates A_pop.
-                   # Here we sum spikes per time bin.
-                   # Input to estimator encoded as 'A'.
-                   # sum(spikes, axis=1) is counts per dt.
+                   
                    pop_counts = np.sum(spikes, axis=1)
                    Spike_trials.append(pop_counts)
                    
-                   # Energy
                    if tr == 0:
                        mean_rate = np.mean(rate_feature)
-                       E_total = mean_rate # Approximate proxy
+                       E_total = mean_rate 
                    
-              # DECODER 1: RATE
               lcfg_r = base_cfg['estimators']['lower'].copy()
               lcfg_r['split'] = 'trial'
               lcfg_r['n_trials'] = n_trials
@@ -132,7 +117,6 @@ def main():
               if 'bandwidth' in base_cfg['stimulus']:
                    lcfg_r['bandwidth'] = base_cfg['stimulus']['cutoff_freq']
               
-              # Propagate
               d_params = base_cfg.get('decode', {})
               if 'ridge_alpha' in d_params: lcfg_r.setdefault('parameters', {})['alpha'] = float(d_params['ridge_alpha'])
               if 'lag_taps' in d_params: lcfg_r['lags'] = int(d_params['lag_taps'])
@@ -145,13 +129,11 @@ def main():
                   'I_lower': I_rate, 'r2': res_r.get('r2_test'), 'features': 'rate'
               })
 
-              # DECODER 2: SPIKECOUNT
               lcfg_s = lcfg_r.copy()
               lcfg_s['features'] = 'spikecount'
-              # Bin size? dt_eff = 1/(2*cutoff) ~ 10ms for 50Hz.
-              # User suggested "dt_eff or 10-20ms".
+             
               cutoff = base_cfg['stimulus'].get('cutoff_freq', 50.0)
-              lcfg_s['spike_binsize'] = 1.0 / (2.0 * cutoff) # Matched to bandwidth
+              lcfg_s['spike_binsize'] = 1.0 / (2.0 * cutoff) 
               
               res_s = estimate_mi_lower_decode(S_trials, Spike_trials, dt, lcfg_s)
               I_spike = res_s.get('I_lower_bits_per_s', 0.0)
@@ -169,14 +151,12 @@ def main():
                   'diff': I_rate - I_spike
               })
 
-    # Save
     df = pd.DataFrame(results)
     df.to_csv(run_dir / "tables" / "sweep_theta0.csv", index=False)
     
     pd.DataFrame(diag_rate).to_csv(run_dir / "tables" / "decoder_diagnostics_rate.csv", index=False)
     pd.DataFrame(diag_spike).to_csv(run_dir / "tables" / "decoder_diagnostics_spikecount.csv", index=False)
 
-    # Plots
     fig_dir = run_dir / "figures"
     
     plt.figure()
@@ -192,13 +172,11 @@ def main():
     plt.grid(True)
     plt.savefig(fig_dir / "info_rate_vs_spike.pdf")
     
-    # Gate G3'
     print("\n--- G3' ROBUSTNESS CHECK ---")
     pass_g3p = 0
     for s in seeds:
         sub = df[df['seed'] == s].sort_values('mean_rate')
-        # Check peak region agreement
-        # Max I_rate
+        
         idx_r = sub['I_lower_rate'].idxmax()
         val_r = sub.loc[idx_r, 'I_lower_rate']
         rate_at_peak_r = sub.loc[idx_r, 'mean_rate']
@@ -207,9 +185,7 @@ def main():
         val_s = sub.loc[idx_s, 'I_lower_spike']
         rate_at_peak_s = sub.loc[idx_s, 'mean_rate']
         
-        # Check Value Agreement
         ratio_val = abs(val_r - val_s) / (max(val_r, val_s) + 1e-9)
-        # Check Location Agreement
         ratio_loc = abs(rate_at_peak_r - rate_at_peak_s) / (max(rate_at_peak_r, rate_at_peak_s) + 1e-9)
         
         print(f"Seed {s}: Peak Rate-Dec={val_r:.2f} (@{rate_at_peak_r:.1f}Hz), Spike-Dec={val_s:.2f} (@{rate_at_peak_s:.1f}Hz)")
