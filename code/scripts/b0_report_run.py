@@ -1,13 +1,4 @@
-#!/usr/bin/env python3
-"""Stage-0 report + simple acceptance gates.
 
-This is a lightweight *pipeline* check to run after Stage-0 sweeps.
-It summarizes the sweep table and applies a few conservative gates that
-catch common failure modes (NaNs, negative MI, degenerate efficiency curve).
-
-Passing these checks does **not** certify scientific correctness; it only
-indicates the pipeline is producing non-pathological numbers.
-"""
 
 from __future__ import annotations
 
@@ -18,7 +9,6 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 
-# Ensure project root is on import path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -40,13 +30,7 @@ def _most_recent_stage0_run(root: Path) -> Optional[Path]:
 
 
 def _resolve_run_dir(run_id: Optional[str]) -> Tuple[Path, Path, str]:
-    """Resolve the run directory and sweep CSV path.
-
-    Returns
-    -------
-    (run_dir, sweep_csv, note)
-        note is a human-readable description of any fallback used.
-    """
+    
     note = ""
 
     if run_id:
@@ -74,20 +58,16 @@ def _resolve_run_dir(run_id: Optional[str]) -> Tuple[Path, Path, str]:
 
 
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Backward-compatible column normalization for older Stage-0 runs."""
     df = df.copy()
 
-    # tau in seconds -> tau_ms
     if "tau_ms" not in df.columns and "tau" in df.columns:
         df["tau_ms"] = 1000.0 * df["tau"]
 
-    # legacy shorthand
     if "bits_per_joule_upper" not in df.columns and "bpj_upper" in df.columns:
         df["bits_per_joule_upper"] = df["bpj_upper"]
     if "bits_per_joule_lower" not in df.columns and "bpj_lower" in df.columns:
         df["bits_per_joule_lower"] = df["bpj_lower"]
 
-    # if efficiency isn't present, recompute from I and mean_rate
     if "bits_per_joule_upper" not in df.columns and {"I_upper", "mean_rate"}.issubset(df.columns):
         df["bits_per_joule_upper"] = df["I_upper"] / (df["mean_rate"] + 1e-12)
     if "bits_per_joule_lower" not in df.columns and {"I_lower", "mean_rate"}.issubset(df.columns):
@@ -97,7 +77,6 @@ def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _gates(df: pd.DataFrame) -> list[str]:
-    """Return a list of gate failures (empty means pass)."""
     failures = []
 
     needed = ["theta0", "tau_ms", "mean_rate", "I_upper", "bits_per_joule_upper"]
@@ -115,7 +94,6 @@ def _gates(df: pd.DataFrame) -> list[str]:
     if (df["I_upper"] < 0).any():
         failures.append("Negative I_upper present")
 
-    # Efficiency peak should exist and not be only at edges
     eff = df["bits_per_joule_upper"].to_numpy()
     if np.allclose(eff, eff[0]):
         failures.append("bits_per_joule_upper is flat (no optimum detected)")
@@ -128,7 +106,6 @@ def _gates(df: pd.DataFrame) -> list[str]:
         if edge_max > 0 and np.nanmax(eff) < 1.05 * edge_max:
             failures.append("Efficiency peak not clearly above edges (weak optimum)")
 
-    # MI_upper should be positively associated with mean_rate (not necessarily monotone)
     try:
         corr = np.corrcoef(df["mean_rate"].to_numpy(), df["I_upper"].to_numpy())[0, 1]
         if np.isnan(corr) or corr < 0.3:
@@ -153,7 +130,6 @@ def main() -> None:
 
     failures = _gates(df)
 
-    # Summary numbers
     peak_row = df.loc[df["bits_per_joule_upper"].idxmax()]
 
     lines = []
@@ -180,7 +156,6 @@ def main() -> None:
 
     report = "\n".join(lines) + "\n"
 
-    # Write report next to the run
     out_path = run_dir / "logs" / "report.txt"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(report)
