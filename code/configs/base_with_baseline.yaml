@@ -1,0 +1,33 @@
+model:
+  tau_m: 0.02
+  tau_a: 0.1
+  kappa: 1.0
+  sigma: 0.5
+
+hazard:
+  theta0: 1.0
+  thetaV: 1.0
+  thetaa: 0.0
+
+simulation:
+  T: 10.0
+  dt: 0.001
+  burn_in: 1.0
+  seed: 42
+  N: 1000
+
+stimulus: configs/stimulus/gauss_bandlimited.yaml
+
+estimators:
+  upper: configs/estimators/mi_upper_gaussian_rate.yaml
+  lower: configs/estimators/mi_lower_decode.yaml
+
+objective:
+  beta_E: 1.0 # Cost per spike
+  beta_C: 0.1
+  baseline_rate: 1.0 # Hz (metabolic upkeep cost)
+
+output:
+  save_npz: true
+  save_csv: true
+  save_figures: true

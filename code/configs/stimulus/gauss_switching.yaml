@@ -1,0 +1,7 @@
+type: gauss_switching
+mean: 0.0
+std_low: 0.5
+std_high: 2.0
+switch_rate: 0.1
+dt: 0.001
+seed: 42

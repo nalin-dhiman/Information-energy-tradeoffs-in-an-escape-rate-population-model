@@ -1,0 +1,6 @@
+type: mi_lower_decode
+decoder: ridge_regression
+folds: 5
+features: rate
+parameters:
+  alpha: 1.0

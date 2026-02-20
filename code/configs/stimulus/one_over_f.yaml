@@ -1,0 +1,8 @@
+type: one_over_f
+exponent: 1.0
+f_min: 0.1
+f_max: 100.0
+mean: 0.0
+std: 1.0
+dt: 0.001
+seed: 42

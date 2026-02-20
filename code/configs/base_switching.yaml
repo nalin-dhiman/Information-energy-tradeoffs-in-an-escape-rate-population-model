@@ -1,0 +1,22 @@
+# Base Config for Phase 13 (Switching Stimulus)
+# Inherits from base.yaml logic but replaces stimulus.
+
+simulation:
+  dt: 0.0005
+  T: 60.0 # Will be overridden by script (T=5.0)
+  N: 200 # Will be overridden by script
+  seed: 42
+  
+model:
+  path: "configs/model/glm_hard_reset.yaml"
+  
+stimulus: "configs/stimulus/gauss_switching.yaml"
+  
+estimators:
+  upper: "configs/estimators/mi_upper_gaussian_rate.yaml"
+  lower: "configs/estimators/mi_lower_decode.yaml"
+  
+hazard:
+  theta0: -1.0
+  thetaV: 6.0
+  thetaa: 0.0

@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.DS_Store
+runs/
+.ipynb_checkpoints/
+*.zip
+*.pdf
+!results/figures/*.pdf

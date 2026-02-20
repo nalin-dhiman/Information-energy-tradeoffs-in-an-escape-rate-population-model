@@ -1,0 +1,6 @@
+type: gauss_bandlimited
+mean: 0.0
+std: 1.0
+cutoff_freq: 50.0
+dt: 0.001
+seed: 42

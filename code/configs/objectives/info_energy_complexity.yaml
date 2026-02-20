@@ -1,0 +1,5 @@
+type: info_energy_complexity
+beta_E: 1.0
+beta_C: 0.1
+energy_norm: L2
+complexity_measure: synaptic_weight_l1

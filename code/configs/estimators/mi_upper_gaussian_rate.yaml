@@ -1,0 +1,5 @@
+type: mi_upper_gaussian_rate
+window_size: 0.1
+proxy_method: spectral
+parameters:
+  smooth_tau: 0.02
