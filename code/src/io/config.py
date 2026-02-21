@@ -9,7 +9,6 @@ def load_config(config_path: str) -> Dict[str, Any]:
     return config
 
 def merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively merge override into base."""
     for k, v in override.items():
         if isinstance(v, dict) and k in base and isinstance(base[k], dict):
             merge_configs(base[k], v)
@@ -28,15 +27,12 @@ def parse_cli_overrides(args_list=None):
     
     for override in args.set:
         key, value = override.split('=')
-        # Simple dot notation support could be added here if needed, 
-        # for now let's assume top-level or use manual dictionary passing for nested
-        # Actually, let's support dot notation for nested keys
+        
         keys = key.split('.')
         current = config
         for k in keys[:-1]:
             current = current.setdefault(k, {})
             
-        # Try to cast value
         try:
             val = eval(value)
         except:
