@@ -48,10 +48,5 @@ The pipeline is organized into versioned stages. To reproduce the final results:
    python3 code/scripts/b7_c_pubfigs.py
    ```
 
-## Citation
-
-If you use this code or data in your research, please cite:
-[Citation details for the PRE paper]
-
 ## Contact
-Nalin Dhiman - [GitHub Profile](https://github.com/nalin-dhiman)
+Nalin Dhiman - [Mail](d24008@students.iitmandi.ac.in)
