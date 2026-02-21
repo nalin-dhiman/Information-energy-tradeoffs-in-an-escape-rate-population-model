@@ -17,11 +17,9 @@ from src.estimators.mi_lower_decode import estimate_mi_lower_decode
 from src.estimators.mi_upper import estimate_mi_upper_gaussian
 from scipy.signal import lfilter
 
-# Evaluation Function (Similar to b1 but handles expanded theta)
 def evaluate_point_stage2(theta_dict, cfg, n_trials=20, seeds=[0,1,2], tau=0.02, cutoff=50.0):
     results_seeds = []
     
-    # Extract params
     theta0 = theta_dict.get('theta0', 0.0)
     thetaV = theta_dict.get('thetaV', 0.0)
     thetaa = theta_dict.get('thetaa', 0.0)
@@ -38,7 +36,6 @@ def evaluate_point_stage2(theta_dict, cfg, n_trials=20, seeds=[0,1,2], tau=0.02,
             trial_seed = seed * 1000 + tr 
             current_cfg = json.loads(json.dumps(cfg))
             
-            # Set params
             h = current_cfg.setdefault('hazard', {})
             h['theta0'] = float(theta0)
             h['thetaV'] = float(thetaV)
@@ -59,8 +56,7 @@ def evaluate_point_stage2(theta_dict, cfg, n_trials=20, seeds=[0,1,2], tau=0.02,
             spikes = data['spikes']
             dt = data['dt']
             
-            # Simple Rate Feature for Decoder (Robust)
-            # Convolve spikes
+            
             pop_spikes = np.sum(spikes, axis=1)
             N = spikes.shape[1]
             alpha = dt / tau 
@@ -74,12 +70,10 @@ def evaluate_point_stage2(theta_dict, cfg, n_trials=20, seeds=[0,1,2], tau=0.02,
             A_trials.append(A_smooth)
             E_trials.append(mean_rate)
             
-        # Estimators
         lcfg = cfg['estimators']['lower'].copy()
         lcfg['split'] = 'trial'
         lcfg['n_trials'] = n_trials
         lcfg['seed'] = seed
-        # Use config overrides if present
         if 'decode' in cfg:
              if 'feature_mode' in cfg['decode']: lcfg['feature_mode'] = cfg['decode']['feature_mode']
              if 'lag_taps' in cfg['decode']: lcfg['lags'] = int(cfg['decode']['lag_taps'])
@@ -89,7 +83,6 @@ def evaluate_point_stage2(theta_dict, cfg, n_trials=20, seeds=[0,1,2], tau=0.02,
             res_l = estimate_mi_lower_decode(S_trials, A_trials, dt, lcfg)
             I_lower = res_l.get('I_lower_bits_per_s', 0.0)
             
-            # Diagnostic Upper
             ucfg = cfg['estimators']['upper'].copy()
             ucfg['bandwidth'] = cutoff
             S_concat = np.concatenate(S_trials)
@@ -120,13 +113,11 @@ def evaluate_point_stage2(theta_dict, cfg, n_trials=20, seeds=[0,1,2], tau=0.02,
     }
 
 def optimize_stage2(args, base_cfg):
-    # Setup
-    # base_cfg passed in
+    
     run_dir = create_run_dir(major_version=5)
     print(f"Starting Stage 2 Optimization: {run_dir}")
     if args.tau_c: print(f"  Tau C: {args.tau_c}")
     
-    # Metadata
     extra_meta = {
         'algorithm': 'coordinate_descent_random_restart',
         'beta_E_list': args.beta_e,
@@ -134,28 +125,24 @@ def optimize_stage2(args, base_cfg):
         'restarts': args.restarts,
         'tau_c': args.tau_c, 
         'notes': 'High-Dim Optimization (Quadratic Hazard)',
-        # Strict Metadata
         'dt': base_cfg['simulation'].get('dt', 0.001),
-        'dt_eff': 0.01, # Approx for tau_c=0.02
+        'dt_eff': 0.01, 
         'N': base_cfg['simulation'].get('N', 200),
-        'trials': 20, # Hardcoded in evaluate function default
+        'trials': 20,
         'trial_T': base_cfg['simulation'].get('T', 5.0),
         'tau_list': [args.tau_c],
         'seed_list': [0, 1, 2]
     }
     log_run(run_dir, {'config': base_cfg, 'args': vars(args)}, extra_meta)
     
-    # Constraints / Search Space
-    # Param keys: theta0, thetaV, thetaa, thetaVV, thetaaa, thetaVa
+   
     param_keys = ['theta0', 'thetaV', 'thetaa', 'thetaVV', 'thetaaa', 'thetaVa']
     
-    # Seeds (Start from Stage 1 optima)
     start_seeds = []
     
-    # Try to load Stage 1 results (Prioritize recent successful runs)
     potential_sources = [
         "runs/v2_a/tables/opt_best.csv",
-        "runs/v4_b/tables/lag_sensitivity.csv", # Use lag=5 or 10 points
+        "runs/v4_b/tables/lag_sensitivity.csv",
         "runs/v3_d/tau_0.02/tables/opt_grid_results.csv"
     ]
     
@@ -165,9 +152,8 @@ def optimize_stage2(args, base_cfg):
         if pp.exists():
             print(f"Loading Stage 1 seeds from {pp}")
             df_s1 = pd.read_csv(pp)
-            break # Use first found
+            break 
             
-    # Optimization Loop
     final_results = []
     
     import multiprocessing
@@ -180,13 +166,10 @@ def optimize_stage2(args, base_cfg):
             best_J = -np.inf
             best_res = None
             
-            # Construct seeds for this beta_E
             current_seeds = []
             
-            # 1. Stage 1 Seed (matched beta_E)
             if not df_s1.empty:
-                # Find closest beta_E
-                # Or exact match
+               
                 match = df_s1[np.isclose(df_s1['beta_E'], be)]
                 if not match.empty:
                     row = match.iloc[0]
@@ -198,7 +181,6 @@ def optimize_stage2(args, base_cfg):
                     }
                     current_seeds.append(seed_dict)
             
-            # 2. Random/Heuristic Seeds
             current_seeds.append({'theta0': 0.0, 'thetaV': 5.0, 'thetaa': 0.0, 'thetaVV': 0.0, 'thetaaa': 0.0, 'thetaVa': 0.0})
             current_seeds.append({'theta0': -2.0, 'thetaV': 5.0, 'thetaa': 0.0, 'thetaVV': 0.0, 'thetaaa': 0.0, 'thetaVa': 0.0})
             
@@ -209,7 +191,6 @@ def optimize_stage2(args, base_cfg):
             for restart_idx, seed_params in enumerate(current_seeds[:args.restarts]):
                 print(f"  DEBUG: Restart {restart_idx} with params {seed_params}")
                 current_p = seed_params.copy()
-                # Initial Eval
                 try:
                     res = evaluate_point_stage2(current_p, base_cfg)
                 except Exception as e:
@@ -220,7 +201,6 @@ def optimize_stage2(args, base_cfg):
                     print("  DEBUG: Initial eval failed (None)")
                     continue
                 
-                # J = I - bE*E - bC*|theta|
                 L1 = sum(abs(v) for v in current_p.values())
                 curr_J = res['I_lower_mean'] - be * (res['E_mean'] + baseline_rate) - bc * L1
                 
@@ -229,23 +209,19 @@ def optimize_stage2(args, base_cfg):
                 step_sz = 0.5
                 patience = 3
                 
-                for step in range(10): # Max steps
-                    # Generate neighbors (Coordinate Descent)
+                for step in range(10): 
                     neighbors = []
-                    # +/- step for each param
                     for k in param_keys:
                         for sgn in [-1, 1]:
                             n_p = current_p.copy()
                             n_p[k] += sgn * step_sz
                             neighbors.append(n_p)
                     
-                    # Eval neighbors in parallel
-                    # We can use the pool efficiently here
+
                     chunk = max(1, len(neighbors) // 20)
                     eval_args = [(p, base_cfg) for p in neighbors]
                     neighbor_results = pool.starmap(evaluate_point_stage2, eval_args)
                     
-                    # Find best
                     improved = False
                     for p, r in zip(neighbors, neighbor_results):
                         if not r: continue
@@ -256,29 +232,21 @@ def optimize_stage2(args, base_cfg):
                             curr_J = J_n
                             current_p = p
                             improved = True
-                            # Greedy? Or Best improvement? Greedy is faster.
-                            # Let's take best improvement in batch.
-                            # Actually, we iterate all and find max.
+                            
                             
                     if improved:
                         print(f"    Step {step}: J -> {curr_J:.2f}")
                     else:
-                        # Decay step
                         step_sz *= 0.5
                         if step_sz < 0.05: break
                         
-                # End of restart
                 if curr_J > best_J:
                     best_J = curr_J
                     best_res = current_p.copy()
                     best_res.update({
-                        'I_lower': res['I_lower_mean'], # Using last verified? No, need to re-eval final point?
-                        # Using stored metrics from successful neighbor
-                        # Actually we didn't store the metrics of the winner in the loop perfectly.
-                        # Let's re-eval optimum one last time to be sure.
+                        'I_lower': res['I_lower_mean'],
                     })
             
-            # Final Eval of Global Best for this Beta
             if best_res:
                 final_metrics = evaluate_point_stage2(best_res, base_cfg)
                 if final_metrics:
@@ -292,7 +260,7 @@ def optimize_stage2(args, base_cfg):
                     final_results.append(row)
                     print(f"  >> Best: J={best_J:.2f}, E={row['E_mean']:.1f}Hz, I={row['I_lower_mean']:.1f}")
 
-    # Save
+    
     df = pd.DataFrame(final_results)
     df.to_csv(run_dir / "tables" / "stage2_best.csv", index=False)
     print("Optimization Complete.")
@@ -306,10 +274,8 @@ def main():
     parser.add_argument('--tau_c', type=float, default=0.02, help='Stimulus correlation time')
     args = parser.parse_args()
     
-    # Apply tau_c override
     base_cfg = load_config(args.config)
     
-    # Load subconfigs first (copied from b1)
     if isinstance(base_cfg.get('stimulus'), str):
         p = Path(base_cfg.get('stimulus'))
         if not p.exists(): p = Path(__file__).parent.parent / str(p)
@@ -327,13 +293,7 @@ def main():
          else:
               base_cfg['stimulus'] = {'tau_c': args.tau_c}
     
-    # Pass modified config to optimize (via args logic needing update? No, pass base_cfg directly)
-    # optimize_stage2 loads config again? No, it calls load_config(args.config).
     
-    # We need to change how optimize_stage2 loads config.
-    # Refactor optimize_stage2 to accept the config object or path.
-    # Actually, optimize_stage2 calls `load_config(args.config)`.
-    # Let's pass the valid config to it.
     
     optimize_stage2(args, base_cfg)
 
