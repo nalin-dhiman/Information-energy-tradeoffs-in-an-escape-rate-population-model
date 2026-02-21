@@ -13,21 +13,14 @@ from src.io.config import load_config
 from src.io.runlog import log_run
 
 def run_control_sweep(args, mode='lag'):
-    # Mode: 'lag' or 'bin'
     
-    # 1. Setup Run Dir
     if mode == 'lag':
         run_tag = 'v4_a'
         param_vals = [5, 10, 20]
         param_name = 'lag_taps'
-        override_key = '--lag_taps' # We need to support this in b1
-        # Actually b1 takes config. We can inject into config via temporary file or CLI override if supported.
-        # b1 supports --tau_c. Does it support arbitrary config overrides? No.
-        # We should modify b1 to accept json overrides or just use temp configs.
-        # Or simpler: modify b1 to accept --overrides "key=val"
-        # Or just write temp configs.
+        override_key = '--lag_taps'
     elif mode == 'bin':
-        run_tag = 'v4_b' # Auto increment will handle
+        run_tag = 'v4_b' 
         param_vals = [0.01, 0.02, 0.05]
         param_name = 'bin_dt'
     elif mode == 'trials':
@@ -42,14 +35,12 @@ def run_control_sweep(args, mode='lag'):
     base_cfg_path = args.config
     base_cfg = load_config(base_cfg_path)
     
-    # Log Run
     extra_meta = {
         'control_mode': mode,
         'param_values': param_vals,
         'tau_c': 0.02, 
         'beta_E': [0, 0.3, 1, 3, 10],
         'notes': f'Artifact Control {mode}',
-        # Strict Metadata for Runlog
         'dt': base_cfg['simulation'].get('dt', 0.001),
         'dt_eff': 'variable (sweep)',
         'N': base_cfg['simulation'].get('N', 200),
@@ -57,8 +48,8 @@ def run_control_sweep(args, mode='lag'):
         'trial_T': base_cfg['simulation'].get('T', 5.0),
         'tau_list': [0.02],
         'seed_list': [0, 1, 2],
-        'beta_E_list': [0, 0.3, 1, 3, 10], # From b4 logic
-        'beta_C_list': [0.0, 0.01] # From b1 logic
+        'beta_E_list': [0, 0.3, 1, 3, 10],
+        'beta_C_list': [0.0, 0.01] 
     }
     log_run(run_dir, {'config': base_cfg, 'args': vars(args)}, extra_meta)
     
@@ -69,35 +60,25 @@ def run_control_sweep(args, mode='lag'):
         sub_dir = run_dir / f"{param_name}_{val}"
         sub_dir.mkdir(parents=True, exist_ok=True)
         
-        # Create temp config with override
         temp_cfg = base_cfg.copy()
         
         if mode == 'lag':
             temp_cfg.setdefault('decode', {})['lag_taps'] = int(val)
         elif mode == 'bin':
-            # Use 'decode' section to override feature_mode and bin_dt
-            # b1 script is updated to look for these in 'decode' section
+            
             temp_cfg.setdefault('decode', {})['bin_dt'] = float(val)
             temp_cfg.setdefault('decode', {})['feature_mode'] = 'spikecount_lags'
         elif mode == 'trials':
-            # Override trials in simulation and decode
             val_int = int(val)
-            temp_cfg['simulation']['trials'] = val_int # Not standard key? b1 checks this?
-            # b1 uses `n_trials=20` argument locally in `main`, but passes it to `evaluate_point`.
-            # b1 main hardcodes `trials=20` in `extra_meta`.
-            # b1 uses `args.trials`? No. 
-            # b1 code: `grid_results = ... (..., 20)`. It hardcodes 20.
-            # I NEED TO UPDATE b1 TO ACCEPT TRIALS ARGUMENT.
+            temp_cfg['simulation']['trials'] = val_int 
             pass 
             
-        # Write temp config
         import yaml
         temp_cfg_path = sub_dir / "temp_config.yaml"
         with open(temp_cfg_path, 'w') as f:
             yaml.dump(temp_cfg, f)
             
-        # Run b1 with this config
-        # We need to enforce tau_c=0.02
+      
         cmd = [
             "python3", "scripts/b1_grid_refine_theta.py",
             "--config", str(temp_cfg_path),
@@ -106,26 +87,22 @@ def run_control_sweep(args, mode='lag'):
             "--run_dir", str(sub_dir)
         ]
         
-        # Pass trials arg if mode is trials
         if mode == 'trials':
             cmd.extend(["--trials", str(val)])
         
         subprocess.run(cmd, check=True)
         
-        # Harvest
         res_file = sub_dir / "tables" / "opt_best.csv"
         if res_file.exists():
             df = pd.read_csv(res_file)
             df[param_name] = val
             aggregated_results.append(df)
             
-    # Save Aggregate
-    full_df = pd.DataFrame() # Fallback
+    full_df = pd.DataFrame() 
     if aggregated_results:
         full_df = pd.concat(aggregated_results, ignore_index=True)
         full_df.to_csv(run_dir / "tables" / f"{mode}_sensitivity.csv", index=False)
         
-        # Plotting - Rate Stability
         plot_results(full_df, run_dir, param_name, mode)
     else:
         print("No results aggregated.")
@@ -138,10 +115,8 @@ def plot_results(df, run_dir, param_name, mode):
     
     betas = sorted(df['beta_E'].unique())
     
-    # 1. Rate shift
     plt.subplot(1, 2, 1)
     for be in betas:
-        # Use close comparison for float beta_E
         sub = df[np.isclose(df['beta_E'], be)].sort_values(param_name)
         if not sub.empty:
             plt.plot(sub[param_name], sub['E_mean_Hz'], 'o-', label=f'Beta={be}')
@@ -151,7 +126,6 @@ def plot_results(df, run_dir, param_name, mode):
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    # 2. Logic Gate Check
     gate_passed = True
     deviations = []
     
