@@ -19,7 +19,7 @@ from src.estimators.mi_lower_decode import estimate_mi_lower_decode
 from src.estimators.mi_upper import estimate_mi_upper_gaussian
 
 def convolve_spikes(spikes, tau, dt):
-    pop_spikes = np.sum(spikes, axis=1) # (T,)
+    pop_spikes = np.sum(spikes, axis=1) 
     N = spikes.shape[1]
     alpha = dt / tau 
     inst_rate = pop_spikes / (N * dt)
@@ -29,10 +29,7 @@ def convolve_spikes(spikes, tau, dt):
     return A_smooth
 
 def evaluate_point(theta, cfg, n_trials=20, seeds=[0,1,2], tau=0.02, cutoff=50.0):
-    """
-    Evaluate a single parameter point theta=(theta0, thetaV, thetaa).
-    Returns averaged metrics across seeds.
-    """
+    
     results_seeds = []
     
     for seed in seeds:
@@ -54,28 +51,23 @@ def evaluate_point(theta, cfg, n_trials=20, seeds=[0,1,2], tau=0.02, cutoff=50.0
             try:
                 data = run_simulation(current_cfg)
             except Exception as e:
-                # print(f"Simulation Failed at {theta}: {e}")
                 return None
                 
             S = data['S']
             spikes = data['spikes']
             dt = data['dt']
             
-            # Rate Lags features (default)
             A = convolve_spikes(spikes, tau, dt)
             mean_rate = np.mean(A)
             
             S_trials.append(S)
             A_trials.append(A)
-            E_trials.append(mean_rate) # Raw rate proxy
-            
-        # Estimate MI Lower
+            E_trials.append(mean_rate) 
         lcfg = cfg['estimators']['lower'].copy()
         lcfg['split'] = 'trial'
         lcfg['n_trials'] = n_trials
         lcfg['seed'] = seed
         lcfg['feature_mode'] = cfg.get('estimators', {}).get('lower', {}).get('feature_mode', 'rate_lags')
-        # Allow override from decode config too?
         if 'feature_mode' in cfg.get('decode', {}):
              lcfg['feature_mode'] = cfg['decode']['feature_mode']
         if cutoff: lcfg['bandwidth'] = cutoff
@@ -91,18 +83,15 @@ def evaluate_point(theta, cfg, n_trials=20, seeds=[0,1,2], tau=0.02, cutoff=50.0
             res_l = estimate_mi_lower_decode(S_trials, A_trials, dt, lcfg)
             I_lower = res_l.get('I_lower_bits_per_s', 0.0)
             
-            # Diagnostic Upper (Surrogate)
             ucfg = cfg['estimators']['upper'].copy()
             ucfg['bandwidth'] = cutoff
             
-            # Concat trials for spectral coherence
             S_concat = np.concatenate(S_trials)
             A_concat = np.concatenate(A_trials)
             res_u = estimate_mi_upper_gaussian(S_concat, A_concat, dt, ucfg)
             I_upper = res_u.get('I_upper_surrogate_bits_per_s', 0.0)
             
         except Exception as e:
-            # print(f"Estimation Failed at {theta}: {e}")
             I_lower = 0.0
             I_upper = 0.0
             res_l = {}
@@ -125,11 +114,11 @@ def evaluate_point(theta, cfg, n_trials=20, seeds=[0,1,2], tau=0.02, cutoff=50.0
         'I_lower_mean_bits_per_s': vals['I_lower'].mean(),
         'I_lower_std_bits_per_s': vals['I_lower'].std(),
         'I_upper_surrogate_mean_bits_per_s': vals['I_upper_surrogate'].mean(),
-        'E_mean_Hz': vals['E_mean'].mean(), # Explicit Hz
+        'E_mean_Hz': vals['E_mean'].mean(), 
         'mse_test_mean': vals['mse_test'].mean(),
         'r2_test_mean': vals['r2_test'].mean(),
         'var_S_test_mean': vals['var_S_test'].mean(),
-        'dt_eff': vals['dt_eff'].mean() # Should be constant
+        'dt_eff': vals['dt_eff'].mean() 
     }
 
 def main():
@@ -139,7 +128,6 @@ def main():
     
     base_cfg = load_config(args.config)
     
-    # Subconfig loading
     if isinstance(base_cfg.get('stimulus'), str):
         p = Path(base_cfg.get('stimulus'))
         if not p.exists(): p = Path(__file__).parent.parent / str(p)
@@ -162,7 +150,6 @@ def main():
     
     base_cfg = load_config(args.config)
     
-    # Subconfig loading
     if isinstance(base_cfg.get('stimulus'), str):
         p = Path(base_cfg.get('stimulus'))
         if not p.exists(): p = Path(__file__).parent.parent / str(p)
@@ -174,23 +161,18 @@ def main():
                 if not p.exists(): p = Path(__file__).parent.parent / str(p)
                 if p.exists(): base_cfg['estimators'][k] = load_config(str(p))
 
-    # Apply Overrides (After loading subconfigs)
     if args.tau_c is not None:
-         # Map tau_c to stimulus cutoff
          if 'stimulus' in base_cfg: 
-              # Generic: base_cfg['stimulus']['tau_c'] = args.tau_c
               base_cfg['stimulus']['tau_c'] = args.tau_c
          else:
               base_cfg['stimulus'] = {'tau_c': args.tau_c}
 
 
-    # Phase 9 Setup
-    # OPTIMIZATION: Reduce load for completion.
+    
     base_cfg['simulation']['N'] = 200
     base_cfg.setdefault('decode', {})
     base_cfg['decode']['trial_T'] = 5.0
-    base_cfg['simulation']['T'] = 5.0 # Ensure sim matches
-    
+    base_cfg['simulation']['T'] = 5.0 
     if args.run_dir:
         run_dir = Path(args.run_dir)
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -204,16 +186,12 @@ def main():
     print(f"  Beta E List: {args.beta_e}")
     if args.tau_c: print(f"  Tau C: {args.tau_c}")
     
-    # Strict Run Log
     stime = base_cfg.get('stimulus', {})
-    if isinstance(stime, str): stime = {} # Should be dict by now if loaded
-    
-    # Calculate dt, dt_eff, tau_list, seed_list for validation
+    if isinstance(stime, str): stime = {}
+        
     dt = base_cfg['simulation'].get('dt', 0.001)
-    # Estimate dt_eff (bandwidth dependent)
-    # Just grab from first stim config or default
-    # We will log it properly.
-    # For now, put placeholder or calculate from bandwidth.
+   
+    
     cutoff = stime.get('cutoff_hz', 20.0)
     dt_eff = 1.0 / (2.0 * cutoff)
     
@@ -224,7 +202,8 @@ def main():
         'trials': args.trials,
         'trial_T': base_cfg['simulation']['T'],
         'tau_list': [args.tau_c] if args.tau_c else [],
-        'seed_list': [0, 1, 2], # Default in evaluate_point
+        'seed_list': [0, 1, 2], 
+        
         'beta_E_list': args.beta_e,
         'beta_C_list': [0.0, 0.01]
     }
@@ -243,8 +222,8 @@ def main():
     
     print(f"Grid: {len(theta0_grid)}x{len(thetaV_grid)}x{len(thetaa_grid)} pts. BetaE={beta_E_vals}, BetaC={beta_C_vals}")
 
-    # 1. EVALUATE GRID
-    param_list = list(itertools.product(theta0_grid, thetaV_grid, thetaa_grid))
+
+        param_list = list(itertools.product(theta0_grid, thetaV_grid, thetaa_grid))
     
     print(f"Parallel Grid Search with 20 processes...")
     import multiprocessing
@@ -253,26 +232,24 @@ def main():
     
     with multiprocessing.Pool(processes=20) as pool:
         args_list = [(theta, base_cfg, 20) for theta in param_list]
-        chunk = max(1, len(args_list) // 40) # Smaller chunks for response
+        chunk = max(1, len(args_list) // 40) 
         
-        # Use imap to save as we go
-        # imap returns (theta_idx, res)? No, just res.
-        # We zip(param_list, ...)
+        
+        
+        
         
         for i, res in enumerate(pool.starmap(evaluate_point, args_list, chunksize=chunk)):
             theta = param_list[i]
             if res is not None:
                 point_cache[theta] = res
                 
-                # Save immediately to CSV
-                # (Need to recalculate J for all betas? Or just save raw?)
-                # We save raw cache to a separate file? Or just final?
-                # Let's save final block.
+                
+                
                 
                 if i % 50 == 0:
                     print(f"  Grid {i}/{len(param_list)} done.")
              
-    # 2. CALCULATE OBJECTIVES
+
     best_candidates = {} 
     
     for bE in beta_E_vals:
@@ -295,12 +272,13 @@ def main():
             
     pd.DataFrame(grid_results).to_csv(run_dir / "tables" / "opt_grid_results.csv", index=False)
     
-    # 3. REFINE (PARALLEL NEIGHBORS)
+
     print("Refining (Parallel Neighbors)...")
     refined_results = []
     
-    # We can reuse the pool? No, we exited context.
-    # Create new pool for refinement steps
+
+    
+    
     
     with multiprocessing.Pool(processes=20) as pool:
     
@@ -316,7 +294,6 @@ def main():
             step_sz = np.array([0.5, 0.5, 0.5])
             
             for iter in range(3):
-                # Generate neighbors
                 neighbors = []
                 for d in range(3):
                      for sgn in [-1, 1]:
@@ -324,23 +301,19 @@ def main():
                           t_new[d] += sgn * step_sz[d]
                           neighbors.append(tuple(t_new))
                 
-                # Filter unique/new
                 to_eval = [t for t in neighbors if t not in point_cache]
                 
                 if to_eval:
                     args = [(t, base_cfg, 20) for t in to_eval]
-                    # Eval in parallel
                     new_res = pool.starmap(evaluate_point, args)
                     for t, r in zip(to_eval, new_res):
                         if r: point_cache[t] = r
                 
-                # Check results
                 improved = False
                 for t in neighbors:
                     if t in point_cache:
                         res = point_cache[t]
                         C = np.sum(np.abs(t))
-                        # E = res['E_mean_Hz'] + baseline_rate # Used implicitly?
                         J = res['I_lower_mean_bits_per_s'] - bE * (res['E_mean_Hz'] + baseline_rate) - bC * C
                         if J > curr_J:
                             curr_J = J
@@ -350,7 +323,6 @@ def main():
                             
                 if not improved: step_sz *= 0.5
                 
-            # Store Best
             row = curr_res.copy()
             del row['theta']
             row.update({
@@ -363,7 +335,6 @@ def main():
 
     pd.DataFrame(refined_results).to_csv(run_dir / "tables" / "opt_best.csv", index=False)
     
-    # Plots
     fig_dir = run_dir / "figures"
     fig_dir.mkdir(exist_ok=True)
     
