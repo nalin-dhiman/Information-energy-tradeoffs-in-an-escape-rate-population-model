@@ -26,7 +26,6 @@ def main():
     
     beta_e_vals = sorted(df['beta_E'].unique())
     
-    # 1. Rate vs Tau_c
     plt.figure()
     for be in beta_e_vals:
         sub = df[np.isclose(df['beta_E'], be)]
@@ -43,7 +42,6 @@ def main():
     plt.savefig(plot_dir / f"rate_vs_tauc{args.suffix}.pdf")
     print(f"Saved {plot_dir / f'rate_vs_tauc{args.suffix}.pdf'}")
 
-    # 2. Efficiency vs Tau_c
     plt.figure()
     for be in beta_e_vals:
         sub = df[np.isclose(df['beta_E'], be)]
@@ -62,7 +60,6 @@ def main():
     plt.savefig(plot_dir / f"bpj_vs_tauc{args.suffix}.pdf")
     print(f"Saved {plot_dir / f'bpj_vs_tauc{args.suffix}.pdf'}")
 
-    # 3. Theta vs Tau_c (Theta0)
     plt.figure()
     for be in beta_e_vals:
         sub = df[np.isclose(df['beta_E'], be)]
