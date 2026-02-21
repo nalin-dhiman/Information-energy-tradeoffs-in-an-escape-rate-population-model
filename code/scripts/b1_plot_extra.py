@@ -21,15 +21,12 @@ def main():
         
     df = pd.read_csv(opt_best_path)
     
-    # Filter for beta_C = 0 or 0.01? 
-    # User might want to see effect of Beta_E for fixed Beta_C.
-    # Color lines by Beta_C.
+    
     
     beta_c_vals = df['beta_C'].unique()
     
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     
-    # Theta 0
     ax = axes[0]
     for bc in beta_c_vals:
         sub = df[df['beta_C'] == bc].sort_values('beta_E')
@@ -39,7 +36,6 @@ def main():
     ax.set_title('Theta 0 vs Beta_E')
     ax.legend()
     
-    # Theta V
     ax = axes[1]
     for bc in beta_c_vals:
         sub = df[df['beta_C'] == bc].sort_values('beta_E')
@@ -48,7 +44,6 @@ def main():
     ax.set_ylabel('Theta V (Threshold)')
     ax.set_title('Theta V vs Beta_E')
     
-    # Theta a
     ax = axes[2]
     for bc in beta_c_vals:
         sub = df[df['beta_C'] == bc].sort_values('beta_E')
