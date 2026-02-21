@@ -47,6 +47,5 @@ The pipeline is organized into versioned stages. To reproduce the final results:
    ```bash
    python3 code/scripts/b7_c_pubfigs.py
    ```
-
 ## Contact
-Nalin Dhiman - [Mail](d24008@students.iitmandi.ac.in)
+Nalin Dhiman - [d24008@students.iitmandi.ac.in](mailto:d24008@students.iitmandi.ac.in)
