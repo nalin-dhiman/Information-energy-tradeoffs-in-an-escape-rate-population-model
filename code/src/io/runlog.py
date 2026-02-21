@@ -26,14 +26,7 @@ def get_base_metadata() -> Dict[str, Any]:
     }
 
 def log_run(run_dir: Path, config: Dict, extra_meta: Dict[str, Any]):
-    """
-    Writes run.json with strict validation.
-    Required extra_meta keys:
-    - dt, dt_eff
-    - N, trials, trial_T
-    - tau_list, seed_list
-    - beta_E_list, beta_C_list
-    """
+   
     required_keys = [
         'dt', 'dt_eff', 
         'N', 'trials', 'trial_T', 
