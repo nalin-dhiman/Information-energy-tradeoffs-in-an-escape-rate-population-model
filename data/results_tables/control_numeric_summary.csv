@@ -1,0 +1,7 @@
+control,condition,numeric_result,interpretation
+null_decoder_leakage,tau_c=0.02,I_dec=0 bits/s,zero-stimulus control gives no decodable stimulus information
+null_decoder_leakage,tau_c=0.1,I_dec=0 bits/s,zero-stimulus control gives no decodable stimulus information
+spike_feature_robustness,tau_c=0.02,spike-count/rate decoder=1.44,same qualitative operating regime under binned spike-count features
+spike_feature_robustness,tau_c=0.1,spike-count/rate decoder=0.91,same qualitative operating regime under binned spike-count features
+spike_feature_robustness,tau_c=0.5,spike-count/rate decoder=0.81,same qualitative operating regime under binned spike-count features
+fixed_theta_finite_size,"N=500 to 4000, tau_c=0.1",I_dec/N2000 range=0.87 to 1.03,finite-size diagnostic only; no re-optimization or N-scaling law

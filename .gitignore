@@ -1,8 +1,13 @@
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
 .DS_Store
+*.aux
+*.log
+*.out
+*.blg
+*.bbl
+*.synctex.gz
+logs/
 runs/
-.ipynb_checkpoints/
 *.zip
-*.pdf
-!results/figures/*.pdf

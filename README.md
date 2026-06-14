@@ -1,51 +1,47 @@
-# Information-Energy Tradeoffs in an Escape-Rate Population Model
+# Information-energy tradeoffs in an escape-rate population model
 
-This repository contains the source code, data, and publication-quality results for the analysis of information processing efficiency in a neural population model based on the hazard (escape-rate) framework.
+This repository contains code, configuration files, processed data tables, and generated figures for simulations of information-energy tradeoffs in a stochastic escape-rate population model.
 
-## Repository Structure
+The repository is organized as a computational release and contains only code, data tables, configuration files, and generated image assets.
 
-- `code/`: Core implementation of the model and analysis pipeline.
-    - `src/`: Neural simulator, stimuli generators, and Mutual Information (MI) estimators.
-    - `scripts/`: Production scripts for optimization, sweeps, and plotting.
-    - `configs/`: YAML-based configuration system defining experiment parameters.
-- `results/`:
-    - `figures/`: Publication-ready vector PDF figures (Fig 1-7, including Pareto frontiers and scaling laws).
-    - `tables/`: Consolidated statistical tables (CSV) including Pareto optima and time-constant sweeps.
+## Contents
 
-## Key Findings
+- `code/src/`: simulation, model, stimulus, estimator, and I/O utilities.
+- `code/configs/`: YAML configuration files for stimulus, model, estimator, and objective settings.
+- `code/scripts/`: analysis and plotting scripts.
+- `data/results_tables/`: consolidated processed tables used by the analysis scripts.
+- `data/run_tables/`: additional processed run tables.
+- `figures/`: generated figure files.
+- `cluster_dense_tau/`: scripts for the dense stimulus-time-scale sweep on a cluster or workstation.
 
-1. **Efficiency Scaling**: Optimal firing rates show power-law scaling with stimulus timescale ($\tau_c$). We find a scaling exponent of $\approx -0.48$, consistent with metabolic efficiency requirements.
-2. **Pareto Frontier**: Stage 2 optimization reveals a significantly extended cost-efficiency frontier compared to Stage 1, highlighting the role of quadratic synaptic and adaptation terms.
-3. **Robustness**: Results are consistent across both Gaussian and Switching (telegraph) stimulus protocols.
+## Basic Usage
 
-## Getting Started
+Run scripts from the repository root. For example:
 
-### Prerequisites
-
-- Python 3.10+
-- Dependencies: `numpy`, `scipy`, `pandas`, `matplotlib`, `seaborn`, `pyyaml`
-
-To install dependencies:
 ```bash
-pip install -r code/requirements.txt
+python3 code/scripts/b7_c_pubfigs.py
+python3 code/scripts/b11_plot_numeric_controls.py
 ```
-*(Note: A requirements file is included in the code directory).*
 
-### Running Analyses
+The dense stimulus-time-scale sweep can be run with:
 
-The pipeline is organized into versioned stages. To reproduce the final results:
+```bash
+bash cluster_dense_tau/run_parallel_background.sh
+```
 
-1. **Statistical Consolidation**:
-   ```bash
-   python3 code/scripts/b7_a_final_stats.py
-   ```
-2. **Scaling Quantification**:
-   ```bash
-   python3 code/scripts/b7_b_scaling_fit.py
-   ```
-3. **Figure Generation**:
-   ```bash
-   python3 code/scripts/b7_c_pubfigs.py
-   ```
-## Contact
-Nalin Dhiman - [d24008@students.iitmandi.ac.in](mailto:d24008@students.iitmandi.ac.in)
+or adapted to SLURM using the scripts in `cluster_dense_tau/`.
+
+## Python Dependencies
+
+The scripts use standard scientific Python packages:
+
+- numpy
+- scipy
+- pandas
+- matplotlib
+- pyyaml
+- scikit-learn
+
+## Scope
+
+The energy term in these simulations is a firing-rate proxy, and the decoding estimate is an operational linear-decoder quantity. The processed tables and scripts are provided to make the computational workflow inspectable and reusable.

@@ -10,18 +10,22 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.io.config import load_config
 from src.io.paths import create_run_dir
 from src.io.runlog import log_run
-
+# Import the sweep function (assuming we can reuse it or need to duplicate logic for custom saving)
+# Reusing the logic from b6_tau_sweep_stage2 but ensuring specific saving
 from scripts.b6_tau_sweep_stage2 import run_tau_sweep_stage2
 from scripts.b5_stage2_optimization import optimize_stage2
 
-
+# We need to hack/wrap the run_tau_sweep_stage2 or just re-implement the loop to control output filenames.
+# Re-implementing the loop is safer to ensure exact filenames requested.
 
 def run_ablation_audit(args):
+    # base run dir
     run_dir = create_run_dir(major_version=6)
     print(f"Starting Phase 21 (Ablation Audit): {run_dir}")
     
     base_cfg = load_config(args.config)
     
+    # Pre-resolve includes for metadata access
     def resolve_includes_top(cfg, root=Path(__file__).parent.parent):
          for k, v in cfg.items():
             if isinstance(v, str) and v.endswith('.yaml'):
@@ -35,6 +39,7 @@ def run_ablation_audit(args):
                 resolve_includes_top(v, root)
     resolve_includes_top(base_cfg)
     
+    # Metadata
     dt = base_cfg['simulation']['dt']
     trial_T = base_cfg['simulation']['T']
     N = base_cfg['simulation']['N']
@@ -46,6 +51,7 @@ def run_ablation_audit(args):
         'protocols': ['BetaC=0', 'BetaE=0'],
         'seeds': [0, 1, 2],
         'trials': 20,
+        # Strict Metadata Keys
         'dt': dt,
         'dt_eff': dt_eff, 
         'N': N,
@@ -57,19 +63,24 @@ def run_ablation_audit(args):
     }
     log_run(run_dir, {'config': base_cfg, 'args': vars(args)}, extra_meta)
     
-   
+    # 1. Ablation BetaC=0
+    # beta_C = 0, beta_E in {0, 1, 10}, tau in {0.02, 0.1}
     print("\n=== Running Ablation: BetaC=0 ===")
     
-    
+    # We need a tailored version of run_tau_sweep logic.
+    # To avoid duplicate code, let's just call the core loop if possible, or copy-paste.
+    # Copy-paste of the loop structure is most robust here to ensure custom saving.
     
     tau_list = [0.02, 0.1]
     
+    # Define sets
     sets = [
         ('ablation_betaC0', {'beta_c': [0.0], 'beta_e': [0.0, 1.0, 10.0]}),
         ('ablation_betaE0', {'beta_c': [0.0, 0.03], 'beta_e': [0.0]})
     ]
     
     import multiprocessing
+    # Reduced processes to 5
     pool = multiprocessing.Pool(processes=5)
     
     from scripts.b5_stage2_optimization import evaluate_point_stage2
@@ -82,11 +93,13 @@ def run_ablation_audit(args):
         
         for tau in tau_list:
             print(f"  Tau={tau}")
+            # Config for tau
             import copy
             current_cfg = copy.deepcopy(base_cfg)
             if 'stimulus' not in current_cfg: current_cfg['stimulus'] = {}
             current_cfg['stimulus']['tau_c'] = tau
             
+            # Helper for includes (lazy copy from b6)
             def resolve_includes(cfg, root=Path(__file__).parent.parent):
                  for k, v in cfg.items():
                     if isinstance(v, str) and v.endswith('.yaml'):
@@ -100,6 +113,7 @@ def run_ablation_audit(args):
                         resolve_includes(v, root)
             resolve_includes(current_cfg)
             
+            # Resolve bandwidth etc
             bandwidth = current_cfg['stimulus'].get('bandwidth', 50.0)
             
             param_keys = ['theta0', 'thetaV', 'thetaa', 'thetaVV', 'thetaaa', 'thetaVa']
@@ -107,7 +121,7 @@ def run_ablation_audit(args):
             
             for be in b_e_list:
                 for bc in b_c_list:
-                    
+                    # Optimize
                     print(f"    Optimizing bE={be}, bC={bc}...")
                     
                     best_J = -np.inf
@@ -122,6 +136,7 @@ def run_ablation_audit(args):
                     for seed_idx, start_p in enumerate(seeds):
                         curr_p = start_p.copy()
                         
+                        # Init Eval
                         try:
                             res = evaluate_point_stage2(curr_p, current_cfg, tau=tau)
                         except Exception: res = None
@@ -131,6 +146,7 @@ def run_ablation_audit(args):
                         L1 = sum(abs(v) for v in curr_p.values())
                         curr_J = res['I_lower_mean'] - be * (res['E_mean'] + baseline_rate) - bc * L1
                         
+                        # Descent
                         step_sz = 0.5
                         for step in range(8):
                             neighbors = []
@@ -185,6 +201,7 @@ def run_ablation_audit(args):
                         results.append(best_res)
                         print(f"      >> Result: J={best_J:.2f}, Rate={best_res['rate_mean']:.1f}")
         
+        # Save table
         df = pd.DataFrame(results)
         df.to_csv(run_dir / "tables" / f"{label}.csv", index=False)
         print(f"Saved {label}.csv")
@@ -192,11 +209,18 @@ def run_ablation_audit(args):
     pool.close()
     pool.join()
     
+    # Plotting
+    # Assuming b6_plot_tau.py can handle these files if passed directly?
+    # Or strict plotting?
+    # "figures/ablation_betaC0.pdf"
     
+    # We can call a plotter script
     import subprocess
     for label, _ in sets:
         csv_path = run_dir / "tables" / f"{label}.csv"
-        
+        # We need a plotter. usage: python b6_plot_tau.py <csv>
+        # But b6_plot_tau might expect specific naming or columns.
+        # It expects columns that we just added.
         print(f"Plotting {label}...")
         subprocess.run(["python3", "scripts/b6_plot_tau.py", str(csv_path)])
 

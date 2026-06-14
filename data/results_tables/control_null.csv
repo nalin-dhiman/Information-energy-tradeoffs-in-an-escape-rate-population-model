@@ -1,0 +1,5 @@
+seed,N,tau_c,feature_mode,I_dec_bits_per_s,r2_test,mse_test,var_S_test,clipped,rate_mean_Hz,trial_count,trial_T_s,null_stimulus
+0,2000,0.02,rate_lags,0.0,1.0,0.0,0.0,True,3.638650497519366,6,6.0,True
+1,2000,0.02,rate_lags,0.0,1.0,0.0,0.0,True,3.654623895072588,6,6.0,True
+0,2000,0.1,rate_lags,0.0,1.0,0.0,0.0,True,2.1679799190254765,6,6.0,True
+1,2000,0.1,rate_lags,0.0,1.0,0.0,0.0,True,2.2768721510186447,6,6.0,True

@@ -1,0 +1,2 @@
+beta_E,beta_C,n_tau,best_model,power_slope,power_ci_lower,power_ci_upper,power_R2,power_delta_aicc
+1.0,0.03,11,exponential,-0.19576072732254998,-0.34574718018317097,-0.045774274461929,0.4920280380861812,4.150558019812749
