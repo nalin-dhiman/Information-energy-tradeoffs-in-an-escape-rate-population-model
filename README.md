@@ -21,6 +21,8 @@ Run scripts from the repository root. For example:
 ```bash
 python3 code/scripts/b7_c_pubfigs.py
 python3 code/scripts/b11_plot_numeric_controls.py
+python3 code/scripts/analyze_optimization_diagnostics.py
+python3 code/scripts/plot_timescale_sweep.py
 ```
 
 The dense stimulus-time-scale sweep can be run with:

@@ -1,0 +1,7 @@
+source,coefficient,selected_count,total_count,selected_fraction
+penalty_grid,thetaVV,0,15,0.0
+penalty_grid,thetaaa,3,15,0.2
+penalty_grid,thetaVa,15,15,1.0
+dense_tau,thetaVV,0,11,0.0
+dense_tau,thetaaa,0,11,0.0
+dense_tau,thetaVa,7,11,0.6363636363636364
