@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plot optimized rate across the dense stimulus-timescale sweep."""
+"""Plot optimized rate across the dense stimulus-timescale sweep in milliseconds."""
 
 from pathlib import Path
 
@@ -17,7 +17,7 @@ def main():
     fig, ax = plt.subplots(figsize=(3.45, 2.8), constrained_layout=True)
 
     ax.errorbar(
-        data["tau_c"],
+        1000.0 * data["tau_c"],
         data["rate_mean"],
         yerr=data["rate_std"],
         color="#1F4E79",
@@ -27,17 +27,39 @@ def main():
         capsize=2,
         label="re-optimized rate",
     )
-    ax.axvline(0.02, color="#E15759", linestyle="--", linewidth=1.0)
-    ax.axvline(0.10, color="#59A14F", linestyle=":", linewidth=1.2)
-    ax.text(0.02, 9.02, r"$\tau_m$", color="#E15759", ha="center", va="bottom")
-    ax.text(0.10, 9.02, r"$\tau_a$", color="#3C7D38", ha="center", va="bottom")
+    ax.axvline(20.0, color="#E15759", linestyle="--", linewidth=1.0)
+    ax.axvline(100.0, color="#59A14F", linestyle=":", linewidth=1.2)
+    ax.annotate(
+        r"$\tau_m$",
+        xy=(20.0, 9.02),
+        xytext=(5, 0),
+        textcoords="offset points",
+        color="#E15759",
+        ha="left",
+        va="bottom",
+    )
+    ax.annotate(
+        r"$\tau_a$",
+        xy=(100.0, 9.02),
+        xytext=(5, 0),
+        textcoords="offset points",
+        color="#3C7D38",
+        ha="left",
+        va="bottom",
+    )
 
     ax.set_xscale("log")
-    ax.set_xlim(0.0085, 0.58)
+    ax.set_xlim(8.5, 580.0)
     ax.set_ylim(1.6, 9.55)
-    ax.set_xlabel(r"stimulus correlation time $\tau_c$ (s)")
+    ax.set_xlabel(r"stimulus correlation timescale $\tau_c$ (ms)")
     ax.set_ylabel("optimized mean rate (Hz)")
-    ax.legend(frameon=False, loc="lower left", fontsize=7)
+    ax.legend(
+        frameon=False,
+        loc="lower right",
+        bbox_to_anchor=(1.0, 1.02),
+        borderaxespad=0,
+        fontsize=7,
+    )
     ax.spines[["top", "right"]].set_visible(False)
 
     FIGURES.mkdir(parents=True, exist_ok=True)
