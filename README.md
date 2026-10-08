@@ -2,6 +2,12 @@
 
 This repository contains code, configuration files, processed data tables, and generated figures for simulations of information-energy tradeoffs in a stochastic escape-rate population model.
 
+## Associated Article
+
+Nalin Dhiman and Siddharth Panwar, "Information-energy tradeoffs in an escape-rate population model," *Physical Review E* (2026).
+
+DOI: [10.1103/nr7w-18m6](https://doi.org/10.1103/nr7w-18m6)
+
 The repository is organized as a computational release and contains only code, data tables, configuration files, and generated image assets.
 
 ## Contents
